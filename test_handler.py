@@ -13,6 +13,7 @@ import sys
 skip_active = False
 APP_ID = "amzn1.ask.skill.ef845e8d-591e-4a5a-802c-5ee89dd8e897"
 
+
 class Test(unittest.TestCase):
 
     @classmethod
@@ -108,7 +109,7 @@ class Test(unittest.TestCase):
                 }
             },
             "request": {
-		        "type": "IntentRequest",
+                "type": "IntentRequest",
                 "requestId": "amzn1.echo-api.request.38a3b85b-9b4d-4d91-bf78-d1abab0f8d1c",
                 "locale": "de-DE",
                 "timestamp": "2020-07-23T13:37:39Z",
@@ -162,7 +163,7 @@ class Test(unittest.TestCase):
                 }
             },
             "request": {
-		        "type": "IntentRequest",
+                "type": "IntentRequest",
                 "requestId": "amzn1.echo-api.request.38a3b85b-9b4d-4d91-bf78-d1abab0f8d1c",
                 "locale": "de-DE",
                 "timestamp": "2020-07-23T13:37:39Z",
@@ -213,7 +214,7 @@ class Test(unittest.TestCase):
                 }
             },
             "request": {
-		        "type": "IntentRequest",
+                "type": "IntentRequest",
                 "requestId": "amzn1.echo-api.request.38a3b85b-9b4d-4d91-bf78-d1abab0f8d1c",
                 "locale": "de-DE",
                 "timestamp": "2020-07-23T13:37:39Z",
@@ -229,6 +230,7 @@ class Test(unittest.TestCase):
             testevent, {}), ensure_ascii=False)
         print(result)
         self.assertEqual(result, expectedResult)
+
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testDiscovery']
