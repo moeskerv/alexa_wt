@@ -1,8 +1,28 @@
 """
 WlanThermo Alexa Skill Adapter
+
 Dependencies:
 
 - Python requests
+
+TODOs
+
+- support HTTP 204 - empty data
+- support HTTP 412 - device - alexa connection missing, echo out code
+- nicen cards, add line breaks -> DONE
+- use POST request to get data
+- allow use to specify channel for temperatures
+- support multiple WLANThermo devices per Alexa user
+- use alexa session.user.userId as indentification against WLANThermo cloud
+- add api token for skill adapter
+- align print and logger debug output
+- implement unit test against static mock in WLANThermo cloud
+- make better use of echo displays (e.g. WLANThermo logo in background)
+
+Links:
+
+https://developer.amazon.com/en-US/docs/alexa/custom-skills/request-and-response-json-reference.html
+
 
 """
 
@@ -26,16 +46,17 @@ INTERNAL_ERROR = 2
 
 # --------------- Helpers that build all of the responses ----------------------
 
-def build_speechlet_response(title, output, reprompt_text, should_end_session):
+
+def build_speechlet_response(card_title, card_text, speech_output, reprompt_text, should_end_session):
     return {
         'outputSpeech': {
             'type': 'PlainText',
-            'text': output
+            'text': speech_output
         },
         'card': {
             'type': 'Simple',
-            'title': title,
-            'content': output
+            'title': card_title,
+            'content': card_text
         },
         'reprompt': {
             'outputSpeech': {
@@ -56,7 +77,7 @@ def build_response(session_attributes, speechlet_response):
 
 
 # --------------- get data from WlanThermo Cloud -------------------------------
-def get_wlanthermo_data (user_id):
+def get_wlanthermo_data(user_id):
 
     BASEURL = "https://dev-cloud.wlanthermo.de/"
     API_TOKEN = "2462abc331700b5426a258"
@@ -111,38 +132,49 @@ def get_welcome_response():
 
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
-        card_title, speech_output, reprompt_text, should_end_session))
+        card_title, speech_output, speech_output, reprompt_text, should_end_session))
+
 
 def get_temperatures(wlanthermo_data):
 
     session_attributes = {}
     card_title = "Temperaturen"
-    speech_output = "Temperatur Ist-Werte: "
+    card_text = "Temperatur Ist-Werte: \n"
+    speech_output = "Die aktuellen Temperaturen der aktiven Fühler sind: "
     reprompt_text = ""
     should_end_session = False
 
     # iterate through all temps, take those which are != 999
     for channel in wlanthermo_data['channel']:
         if channel['temp'] != 999:
-            speech_output = speech_output + channel['name'] + ": " + str(channel['temp']).replace('.', ',') + " Grad "
+            channel_text = channel['name'] + ": " + \
+                str(channel['temp']).replace('.', ',') + " Grad "
+            speech_output = speech_output + channel_text
+            card_text = card_text + channel_text + "\n"
 
     return build_response(session_attributes, build_speechlet_response(
-        card_title, speech_output, reprompt_text, should_end_session))
+        card_title, card_text, speech_output, reprompt_text, should_end_session))
+
 
 def get_pitmaster(wlanthermo_data):
 
     session_attributes = {}
     card_title = "Pitmaster"
-    speech_output = "Pitmaster Ist-Werte: "
+    card_text = "Pitmaster Ist-Werte: \n"
+    speech_output = "Die aktuellen Werte der Pitmaster sind: "
     reprompt_text = ""
     should_end_session = False
 
     # iterate through all temps, take those which are != 999
     for pitmaster in wlanthermo_data['pitmaster']:
-        speech_output = speech_output + "Pitmaster" + str(pitmaster['channel']) + ": " + str(pitmaster['value']) + " % "
+        channel_text = "Pitmaster" + \
+            str(pitmaster['channel']) + ": " + str(pitmaster['value']) + " % "
+        speech_output = speech_output + channel_text
+        card_text = card_text + channel_text + "\n"
 
     return build_response(session_attributes, build_speechlet_response(
-        card_title, speech_output, reprompt_text, should_end_session))
+        card_title, card_text, speech_output, reprompt_text, should_end_session))
+
 
 def get_battery(wlanthermo_data):
 
@@ -153,7 +185,8 @@ def get_battery(wlanthermo_data):
     should_end_session = False
 
     return build_response(session_attributes, build_speechlet_response(
-        card_title, speech_output, reprompt_text, should_end_session))
+        card_title, speech_output, speech_output, reprompt_text, should_end_session))
+
 
 def handle_session_end_request():
     card_title = "Auf Wiedersehen!"
@@ -192,7 +225,8 @@ def on_intent(intent_request, session):
     intent_name = intent_request['intent']['name']
 
     # fetch data from cloud
-    errorOccured, wlanthermo_data = get_wlanthermo_data(session['user']['userId'])
+    errorOccured, wlanthermo_data = get_wlanthermo_data(
+        session['user']['userId'])
     logger.info("Response: " + json.dumps(wlanthermo_data))
 
     # Dispatch to your skill's intent handlers
@@ -209,6 +243,7 @@ def on_intent(intent_request, session):
     else:
         raise ValueError("Invalid intent")
 
+
 def on_session_ended(session_ended_request, session):
     # Called when the user ends the session.
     # Is not called when the skill returns should_end_session=true
@@ -223,9 +258,11 @@ def on_session_ended(session_ended_request, session):
 def lambda_handler(event, context):
     # Route the incoming request based on type (LaunchRequest, IntentRequest, etc.)
 
+    print("Event: " + json.dumps(event))
+
     # ensure only my skill can use this lambda function
-    if (event['session']['application']['applicationId'] != "amzn1.ask.skill.ef845e8d-591e-4a5a-802c-5ee89dd8e897"):
-        raise ValueError("Invalid Application ID")
+    # if (event['session']['application']['applicationId'] != "amzn1.ask.skill.abc"):
+    #    raise ValueError("Invalid Application ID")
 
     if event['session']['new']:
         on_session_started({'requestId': event['request']['requestId']},
