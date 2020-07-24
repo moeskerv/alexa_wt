@@ -15,7 +15,7 @@ TODOs
 - support multiple WLANThermo devices per Alexa user
 - use alexa session.user.userId as indentification against WLANThermo cloud
 - add api token for skill adapter
-- align print and logger debug output
+- align print and logger debug output -> DONE
 - implement unit test against static mock in WLANThermo cloud
 - make better use of echo displays (e.g. WLANThermo logo in background)
 
@@ -43,6 +43,8 @@ USERAGENT = 'WlanThermoAlexaSkill/' + VERSION
 NO_ERROR = 0
 INVALID_AUTHORIZATION_CREDENTIAL = 1
 INTERNAL_ERROR = 2
+ACCOUNT_LINKING_MISSING = 3
+NO_DATA_AVAILABLE = 4
 
 # --------------- Helpers that build all of the responses ----------------------
 
@@ -95,13 +97,13 @@ def get_wlanthermo_data(user_id):
 
         if (response.status_code == 200):
             dataJson = response.json()
-            logger.info("Request time: " + str(response.elapsed))
 
-        elif (response.status_code == 401):
-            errorOccurred = INVALID_AUTHORIZATION_CREDENTIAL
+        elif (response.status_code == 204):
+            errorOccurred = NO_DATA_AVAILABLE
 
-        elif (response.status_code == 504):  # device offline in WRC
-            errorOccurred = INTERNAL_ERROR
+        elif (response.status_code == 412):
+            errorOccurred = ACCOUNT_LINKING_MISSING
+            dataJson = response.json()
 
         else:  # everything else goes here
             errorOccurred = INTERNAL_ERROR
@@ -202,15 +204,15 @@ def handle_session_end_request():
 def on_session_started(session_started_request, session):
     """ Called when the session starts """
 
-    print("on_session_started requestId=" + session_started_request['requestId']
-          + ", sessionId=" + session['sessionId'])
+    logger.info("on_session_started requestId=" + session_started_request['requestId']
+                + ", sessionId=" + session['sessionId'])
 
 
 def on_launch(launch_request, session):
     # Called when the user launches the skill without intend
 
-    print("on_launch requestId=" + launch_request['requestId'] +
-          ", sessionId=" + session['sessionId'])
+    logger.info("on_launch requestId=" + launch_request['requestId'] +
+                ", sessionId=" + session['sessionId'])
 
     return get_welcome_response()
 
@@ -218,8 +220,8 @@ def on_launch(launch_request, session):
 def on_intent(intent_request, session):
     # Called when the user specifies an intent
 
-    print("on_intent requestId=" + intent_request['requestId'] +
-          ", sessionId=" + session['sessionId'])
+    logger.info("on_intent requestId=" + intent_request['requestId'] +
+                ", sessionId=" + session['sessionId'])
 
     intent = intent_request['intent']
     intent_name = intent_request['intent']['name']
@@ -248,8 +250,8 @@ def on_session_ended(session_ended_request, session):
     # Called when the user ends the session.
     # Is not called when the skill returns should_end_session=true
 
-    print("on_session_ended requestId=" + session_ended_request['requestId'] +
-          ", sessionId=" + session['sessionId'])
+    logger.info("on_session_ended requestId=" + session_ended_request['requestId'] +
+                ", sessionId=" + session['sessionId'])
     # add cleanup logic here
 
 
@@ -258,7 +260,7 @@ def on_session_ended(session_ended_request, session):
 def lambda_handler(event, context):
     # Route the incoming request based on type (LaunchRequest, IntentRequest, etc.)
 
-    print("Event: " + json.dumps(event))
+    logger.info("Event: " + json.dumps(event))
 
     # ensure only my skill can use this lambda function
     # if (event['session']['application']['applicationId'] != "amzn1.ask.skill.abc"):
